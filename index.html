@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TDR MONU AI - Signal Engine</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #030804;
+      --card-bg: rgba(10, 24, 15, 0.88);
+      --term-green: #00ff66;
+      --term-dim: rgba(0, 255, 102, 0.2);
+      --term-glow: 0 0 12px rgba(0, 255, 102, 0.6);
+      --term-red: #ff3344;
+      --term-red-glow: 0 0 12px rgba(255, 51, 68, 0.6);
+      --border-dim: #11381e;
+      --border-bright: #00ff66;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--term-green);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 25px;
+      position: relative;
+    }
+
+    /* Scanlines effect */
+    body::before {
+      content: " ";
+      display: block;
+      position: fixed;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      z-index: 100;
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+
+    .app-container {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Header */
+    .header {
+      border: 1px solid var(--border-dim);
+      background: var(--card-bg);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 4px;
+      box-shadow: inset 0 0 8px rgba(0, 255, 102, 0.05);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-shadow: var(--term-glow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-title span { color: #fff; }
+    .status-badge {
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--term-green);
+      border-radius: 50%;
+      box-shadow: var(--term-glow);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* License Banner */
+    .license-bar {
+      border: 1px dashed var(--border-dim);
+      background: rgba(0, 255, 102, 0.03);
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+    .license-timer {
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 5px var(--term-green);
+    }
+
+    /* Views */
+    .view-card {
+      border: 1px solid var(--border-dim);
+      background: var(--card-bg);
+      padding: 14px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hidden { display: none !important; }
+
+    /* Nav Buttons */
+    .nav-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .cyber-btn {
+      background: transparent;
+      border: 1px solid var(--border-dim);
+      color: var(--term-green);
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .cyber-btn:active, .cyber-btn.active {
+      background: var(--term-dim);
+      border-color: var(--border-bright);
+      box-shadow: var(--term-glow);
+    }
+
+    /* Market Tabs */
+    .tabs-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .tab-btn {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-dim);
+      color: var(--term-green);
+      padding: 8px 4px;
+      font-size: 0.8rem;
+      text-align: center;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      border-color: var(--term-green);
+      background: var(--term-dim);
+      box-shadow: var(--term-glow);
+      font-weight: bold;
+    }
+
+    /* Pair List */
+    .pair-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .pair-list::-webkit-scrollbar { width: 4px; }
+    .pair-list::-webkit-scrollbar-thumb { background: var(--border-dim); }
+
+    .pair-item {
+      border: 1px solid rgba(0, 255, 102, 0.15);
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: 0.2s;
+    }
+    .pair-item:active {
+      border-color: var(--term-green);
+      background: rgba(0, 255, 102, 0.1);
+    }
+    .pair-name { font-size: 0.95rem; font-weight: bold; }
+    .pair-sub { font-size: 0.7rem; opacity: 0.7; }
+
+    /* Signal Display */
+    .signal-box {
+      border: 1px solid var(--border-dim);
+      background: rgba(0, 0, 0, 0.4);
+      padding: 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .direction-arrow {
+      font-size: 3rem;
+      line-height: 1;
+      text-shadow: var(--term-glow);
+    }
+    .direction-text {
+      font-size: 1.4rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    .signal-call {
+      color: var(--term-green);
+      text-shadow: var(--term-glow);
+    }
+    .signal-put {
+      color: var(--term-red);
+      text-shadow: var(--term-red-glow);
+    }
+
+    .meta-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .meta-card {
+      border: 1px solid var(--border-dim);
+      padding: 8px;
+      background: rgba(0, 255, 102, 0.02);
+    }
+    .meta-label { font-size: 0.7rem; opacity: 0.7; }
+    .meta-val { font-size: 1.1rem; font-weight: bold; margin-top: 2px; }
+
+    /* Report & Rules */
+    .info-block {
+      border: 1px solid var(--border-dim);
+      padding: 10px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .info-title {
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid var(--border-dim);
+      padding-bottom: 4px;
+    }
+
+    /* Lock Screen Overlay */
+    .lock-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(2, 6, 3, 0.96);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+      gap: 16px;
+    }
+    .lock-icon { font-size: 3rem; }
+    .key-input {
+      width: 100%;
+      max-width: 320px;
+      background: #000;
+      border: 1px solid var(--term-green);
+      color: var(--term-green);
+      padding: 12px;
+      font-size: 1.1rem;
+      text-align: center;
+      letter-spacing: 2px;
+      outline: none;
+      box-shadow: inset 0 0 8px rgba(0, 255, 102, 0.2);
+    }
+    .activate-btn {
+      width: 100%;
+      max-width: 320px;
+      background: var(--term-green);
+      color: #000;
+      font-weight: bold;
+      padding: 12px;
+      font-size: 1rem;
+      border: none;
+      cursor: pointer;
+      box-shadow: var(--term-glow);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Lock Screen Modal -->
+  <div id="lockModal" class="lock-overlay hidden">
+    <div class="lock-icon">🔒</div>
+    <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 1px;">TRIAL EXPIRED</div>
+    <p style="font-size: 0.85rem; opacity: 0.8; max-width: 300px;">
+      Aapka 15-minute trial period complete ho gaya hai. Signal Engine continue karne ke liye Activation Key enter karein.
+    </p>
+    <input type="text" id="activationInput" class="key-input" placeholder="ENTER KEY HERE" autocomplete="off" />
+    <button class="activate-btn" onclick="validateKey()">ACTIVATE NOW</button>
+    <div id="keyError" style="color: var(--term-red); font-size: 0.8rem; height: 18px;"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand-title">
+        <span>TDR MONU AI</span>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span>ONLINE</span>
+      </div>
+    </div>
+
+    <!-- Trial / Key Status -->
+    <div class="license-bar">
+      <span>ACCESS: <strong id="accessStatus">15M TRIAL</strong></span>
+      <span class="license-timer" id="timerDisplay">15:00</span>
+    </div>
+
+    <!-- View 1: Pair Selection -->
+    <div id="marketView" class="view-card">
+      <div class="nav-row">
+        <span>// SELECT_MARKET :: CHOOSE_PAIR</span>
+        <button class="cyber-btn" onclick="openKeyModal()">KEY [🔑]</button>
+      </div>
+
+      <div class="tabs-row">
+        <button class="tab-btn active" onclick="switchTab('fx_live')">[FX LIVE]</button>
+        <button class="tab-btn" onclick="switchTab('fx_otc')">[FX OTC]</button>
+        <button class="tab-btn" onclick="switchTab('assets')">[ASSETS]</button>
+      </div>
+
+      <div class="pair-list" id="pairListContainer"></div>
+    </div>
+
+    <!-- View 2: Signal Details -->
+    <div id="signalView" class="view-card hidden">
+      <div class="nav-row">
+        <button class="cyber-btn" onclick="goBackToMarket()">[ < BACK ]</button>
+        <button class="cyber-btn" onclick="regenerateSignal()">[ < NEW SIGNAL ]</button>
+      </div>
+
+      <div id="selectedPairHeader" style="font-size: 1rem; font-weight: bold; border-bottom: 1px solid var(--border-dim); padding-bottom: 4px;">
+        AUD/CAD OTC | 1 MIN | UP
+      </div>
+
+      <div class="signal-box">
+        <div id="sigArrow" class="direction-arrow signal-call">▲</div>
+        <div id="sigDirText" class="direction-text signal-call">CALL / UP</div>
+        
+        <div class="meta-grid">
+          <div class="meta-card">
+            <div class="meta-label">ENTRY WINDOW</div>
+            <div class="meta-val" id="sigEntryTime">--:--</div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">EXPIRY</div>
+            <div class="meta-val" id="sigExpiry">1 MIN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trading Rules -->
+      <div class="info-block">
+        <div class="info-title">RULES FOR THE SIGNAL:</div>
+        <p>• Signal copy karne ke liye agle 1 minute ke andar entry lein.</p>
+        <p>• Ek baar trade place hone ke baad expire hone ka wait karein.</p>
+        <p>• Agar result negative ho, toh next candle par 1-step Martingale (x2) recommend kiya jata hai.</p>
+      </div>
+
+      <!-- AI Report -->
+      <div class="info-block">
+        <div class="info-title">AI ENGINE REPORT:</div>
+        <div id="aiReportText">
+          Body-to-wick ratio 0.79. Spread 0.6 pips, below average. Confidence: 91%.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Valid Activation Keys
+    const VALID_KEYS = ["MONU-VIP-777", "TDR-PRO-2026", "VIP-UNLIMITED", "MONU786"];
+
+    // Market Database
+    const MARKETS = {
+      fx_live: [
+        "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "EUR/JPY", "GBP/JPY"
+      ],
+      fx_otc: [
+        "AUD/CAD OTC", "AUD/USD OTC", "EUR/USD OTC", "EUR/GBP OTC", "USD/INR OTC", "GBP/USD OTC", "NZD/USD OTC"
+      ],
+      assets: [
+        "Bitcoin", "Ethereum", "Toncoin", "Solana", "Brent Oil", "Crude Oil", "Gold OTC", "Silver OTC"
+      ]
+    };
+
+    let currentTab = 'fx_otc';
+    let currentPair = 'AUD/CAD OTC';
+    let trialDuration = 15 * 60; // 15 Minutes in seconds
+    let isActivated = localStorage.getItem('tdr_activated') === 'true';
+
+    // Trial Timer Logic
+    function initTrial() {
+      if (isActivated) {
+        document.getElementById('accessStatus').innerText = "VIP ACTIVE";
+        document.getElementById('timerDisplay').innerText = "UNLIMITED";
+        document.getElementById('timerDisplay').style.color = "#00ff66";
+        return;
+      }
+
+      let startTime = localStorage.getItem('tdr_trial_start');
+      if (!startTime) {
+        startTime = Date.now();
+        localStorage.setItem('tdr_trial_start', startTime);
+      }
+
+      const updateTimer = () => {
+        if (isActivated) return;
+        const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+        const remaining = trialDuration - elapsed;
+
+        if (remaining <= 0) {
+          document.getElementById('timerDisplay').innerText = "00:00";
+          document.getElementById('lockModal').classList.remove('hidden');
+        } else {
+          const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+          const secs = String(remaining % 60).padStart(2, '0');
+          document.getElementById('timerDisplay').innerText = `${mins}:${secs}`;
+          setTimeout(updateTimer, 1000);
+        }
+      };
+      updateTimer();
+    }
+
+    function validateKey() {
+      const input = document.getElementById('activationInput').value.trim();
+      const err = document.getElementById('keyError');
+
+      if (VALID_KEYS.includes(input)) {
+        localStorage.setItem('tdr_activated', 'true');
+        isActivated = true;
+        document.getElementById('lockModal').classList.add('hidden');
+        document.getElementById('accessStatus').innerText = "VIP ACTIVE";
+        document.getElementById('timerDisplay').innerText = "UNLIMITED";
+        document.getElementById('timerDisplay').style.color = "#00ff66";
+        alert("Activation Successful! Lifetime VIP Access Unlocked.");
+      } else {
+        err.innerText = "INVALID KEY. CONTACT ADMIN FOR ACCESS.";
+      }
+    }
+
+    function openKeyModal() {
+      document.getElementById('lockModal').classList.remove('hidden');
+    }
+
+    // Pair Listing
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderPairs();
+    }
+
+    function renderPairs() {
+      const container = document.getElementById('pairListContainer');
+      container.innerHTML = '';
+      MARKETS[currentTab].forEach(pair => {
+        const div = document.createElement('div');
+        div.className = 'pair-item';
+        div.innerHTML = `
+          <div>
+            <div class="pair-name">[ ${pair} ]</div>
+            <div class="pair-sub">${currentTab.toUpperCase().replace('_', ' ')}</div>
+          </div>
+          <span style="font-size:0.8rem;">SELECT ></span>
+        `;
+        div.onclick = () => selectPair(pair);
+        container.appendChild(div);
+      });
+    }
+
+    function selectPair(pair) {
+      currentPair = pair;
+      document.getElementById('marketView').classList.add('hidden');
+      document.getElementById('signalView').classList.remove('hidden');
+      generateSignal();
+    }
+
+    function goBackToMarket() {
+      document.getElementById('signalView').classList.add('hidden');
+      document.getElementById('marketView').classList.remove('hidden');
+    }
+
+    function regenerateSignal() {
+      generateSignal();
+    }
+
+    // Dynamic Signal Calculation
+    function generateSignal() {
+      const isCall = Math.random() > 0.45;
+      const expiries = ["1 MIN", "2 MIN", "3 MIN", "5 MIN"];
+      const expiry = expiries[Math.floor(Math.random() * expiries.length)];
+
+      const now = new Date();
+      now.setSeconds(now.getSeconds() + 15);
+      const entryTime = now.toTimeString().split(' ')[0].substring(0, 5);
+
+      const confidence = (Math.random() * (96 - 82) + 82).toFixed(1);
+      const spread = (Math.random() * (0.8 - 0.2) + 0.2).toFixed(1);
+
+      document.getElementById('selectedPairHeader').innerText = `${currentPair} | ${expiry} | ${isCall ? 'CALL' : 'PUT'}`;
+      
+      const arrow = document.getElementById('sigArrow');
+      const text = document.getElementById('sigDirText');
+
+      if (isCall) {
+        arrow.innerText = '▲';
+        arrow.className = 'direction-arrow signal-call';
+        text.innerText = 'CALL / UP';
+        text.className = 'direction-text signal-call';
+      } else {
+        arrow.innerText = '▼';
+        arrow.className = 'direction-arrow signal-put';
+        text.innerText = 'PUT / DOWN';
+        text.className = 'direction-text signal-put';
+      }
+
+      document.getElementById('sigEntryTime').innerText = entryTime;
+      document.getElementById('sigExpiry').innerText = expiry;
+      document.getElementById('aiReportText').innerText = 
+        `Grade-A Entry Setup. Spread: ${spread} pips. Confidence Index: ${confidence}%. Neural momentum synchronized.`;
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      }
+      initTrial();
+      renderPairs();
+    });
+  </script>
+</body>
+</html>
