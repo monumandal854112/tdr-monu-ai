@@ -311,9 +311,9 @@
     <div class="lock-icon">🔒</div>
     <div style="font-size: 1.4rem; font-weight: bold; letter-spacing: 1px;">TRIAL EXPIRED</div>
     <p style="font-size: 0.85rem; opacity: 0.8; max-width: 300px;">
-      Aapka 15-minute trial period complete ho gaya hai. Signal Engine continue karne ke liye Activation Key enter karein.
+      Aapka 15-minute trial period complete ho gaya hai. Signal Engine continue karne ke liye VIP Activation Key enter karein.
     </p>
-    <input type="text" id="activationInput" class="key-input" placeholder="ENTER KEY HERE" autocomplete="off" />
+    <input type="text" id="activationInput" class="key-input" placeholder="ENTER VIP KEY HERE" autocomplete="off" />
     <button class="activate-btn" onclick="validateKey()">ACTIVATE NOW</button>
     <div id="keyError" style="color: var(--term-red); font-size: 0.8rem; height: 18px;"></div>
   </div>
@@ -398,7 +398,7 @@
   </div>
 
   <script>
-    // Valid Activation Keys
+    // Master Keys
     const VALID_KEYS = ["MONU-VIP-777", "TDR-PRO-2026", "VIP-UNLIMITED", "MONU786"];
 
     // Market Database
@@ -414,12 +414,12 @@
       ]
     };
 
-    let currentTab = 'fx_otc';
-    let currentPair = 'AUD/CAD OTC';
-    let trialDuration = 15 * 60; // 15 Minutes in seconds
+    let currentTab = 'fx_live';
+    let currentPair = 'EUR/USD';
+    let trialDuration = 15 * 60; // 15 Minutes
     let isActivated = localStorage.getItem('tdr_activated') === 'true';
 
-    // Trial Timer Logic
+    // Trial Timer
     function initTrial() {
       if (isActivated) {
         document.getElementById('accessStatus').innerText = "VIP ACTIVE";
@@ -452,11 +452,13 @@
       updateTimer();
     }
 
+    // Dynamic + Static Key Validator
     function validateKey() {
       const input = document.getElementById('activationInput').value.trim();
       const err = document.getElementById('keyError');
 
-      if (VALID_KEYS.includes(input)) {
+      // Bot dwara generate hui TDR- key ya predefined master keys dono accept honge
+      if (VALID_KEYS.includes(input) || (input.startsWith("TDR-") && input.length >= 8)) {
         localStorage.setItem('tdr_activated', 'true');
         isActivated = true;
         document.getElementById('lockModal').classList.add('hidden');
@@ -473,7 +475,7 @@
       document.getElementById('lockModal').classList.remove('hidden');
     }
 
-    // Pair Listing
+    // Tab Navigation
     function switchTab(tab) {
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -551,7 +553,7 @@
         `Grade-A Entry Setup. Spread: ${spread} pips. Confidence Index: ${confidence}%. Neural momentum synchronized.`;
     }
 
-    // Initialize
+    // Initialization
     window.addEventListener('DOMContentLoaded', () => {
       if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.ready();
